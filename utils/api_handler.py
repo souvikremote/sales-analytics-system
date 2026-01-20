@@ -12,8 +12,8 @@ def create_product_mapping(products):
     return {p['id']: {
         'title': p['title'],
         'category': p['category'],
-        'brand': p['brand'],
-        'rating': p['rating']
+        'brand': p.get('brand', 'Unknown'),
+        'rating': p.get('rating', 0)
     } for p in products}
 
 def enrich_sales_data(transactions, mapping):
