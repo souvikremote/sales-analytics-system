@@ -1,0 +1,43 @@
+SALES ANALYTICS REPORT
+============================================================
+Generated: 2026-01-20 14:19:34
+Records Processed: 71
+
+OVERALL SUMMARY
+------------------------------------------------------------
+Total Revenue: ₹3,540,205.00
+Total Transactions: 71
+Average Order Value: ₹49,862.04
+Date Range: 2024-12-01 to 2024-12-30
+
+REGION-WISE PERFORMANCE
+------------------------------------------------------------
+Region              Sales   % Total      Txns
+North     ₹  1,321,605.00    37.33%        21
+South     ₹    889,332.00    25.12%        13
+West      ₹    848,902.00    23.98%        19
+East      ₹    467,969.00    13.22%        17
+          ₹     12,397.00     0.35%         1
+
+TOP 5 PRODUCTS
+------------------------------------------------------------
+Rank  Product                       Qty        Revenue
+1     Mouse                          61₹     40,297.00
+2     Wireless Mouse                 52₹     62,378.00
+3     Webcam                         35₹    128,187.00
+4     USB Cable                      33₹      7,622.00
+5     Monitor                        30₹    493,759.00
+
+TOP 5 CUSTOMERS
+------------------------------------------------------------
+Rank  CustomerID               Spent    Orders
+1     C004           ₹    857,124.00         3
+2     C017           ₹    762,460.00         1
+3     C010           ₹    457,186.00         3
+4     C024           ₹    261,848.00         3
+5     C008           ₹    216,176.00         5
+
+API ENRICHMENT SUMMARY
+------------------------------------------------------------
+Enriched Transactions: 0/71
+Success Rate: 0.00%

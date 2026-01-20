@@ -1,98 +1,118 @@
+from datetime import datetime
 
 from utils.file_handler import read_sales_data
-from utils.data_processor import *
-from utils.api_handler import *
-from datetime import datetime
+from utils.data_processor import parse_transactions, validate_and_filter
+from utils.data_processor import (
+    calculate_total_revenue,
+    region_wise_sales,
+    top_selling_products,
+)
+from utils.api_handler import fetch_all_products, create_product_mapping, enrich_sales_data
+
 
 def main():
     try:
-        print("SALES ANALYTICS SYSTEM")
-        lines = read_sales_data('data/sales_data.txt')
-        print(f"Read {len(lines)} lines")
+        print("SALES ANALYTICS SYSTEM\n")
 
-        tx = parse_transactions(lines)
-        print(f"Parsed {len(tx)} records")
+        print("[1/10] Reading sales data...")
+        raw_lines = read_sales_data("data/sales_data.txt")
+        print(f"Read {len(raw_lines)} lines\n")
 
-        valid, invalid, summary = validate_and_filter(tx)
-        print(f"Valid: {len(valid)} | Invalid: {invalid}")
+        print("[2/10] Parsing and cleaning data...")
+        transactions = parse_transactions(raw_lines)
+        print(f"Parsed {len(transactions)} records\n")
 
-        products = fetch_all_products()
-        mapping = create_product_mapping(products)
-        enriched = enrich_sales_data(valid, mapping)
-        save_enriched_data(enriched, 'data/enriched_sales_data.txt')
+        print("[3/10] Validating transactions...")
+        valid, invalid_count, summary = validate_and_filter(transactions)
+        print(f"Valid: {len(valid)} | Invalid: {invalid_count}\n")
 
-       total_revenue = calculate_total_revenue(valid)
-avg_order_value = total_revenue / len(valid) if valid else 0
+        print("[4/10] Fetching product data from API...")
+        api_products = fetch_all_products()
+        product_mapping = create_product_mapping(api_products)
+        print(f"Fetched {len(api_products)} products\n")
 
-regions = region_wise_sales(valid)
-top_products = top_selling_products(valid, n=5)
+        print("[5/10] Enriching sales data...")
+        enriched = enrich_sales_data(valid, product_mapping)
+        enriched_success = sum(1 for t in enriched if t.get("API_Match"))
+        print(f"Enriched {enriched_success}/{len(enriched)} transactions\n")
 
-# customer analysis (simple)
-customer_stats = {}
-for t in valid:
-    cid = t["CustomerID"]
-    amt = t["Quantity"] * t["UnitPrice"]
-    if cid not in customer_stats:
-        customer_stats[cid] = {"total_spent": 0, "order_count": 0}
-    customer_stats[cid]["total_spent"] += amt
-    customer_stats[cid]["order_count"] += 1
+        print("[6/10] Generating report...")
+        total_revenue = calculate_total_revenue(valid)
+        avg_order_value = total_revenue / len(valid) if valid else 0
 
-top_customers = sorted(
-    customer_stats.items(),
-    key=lambda x: x[1]["total_spent"],
-    reverse=True
-)[:5]
+        regions = region_wise_sales(valid)
+        top_products = top_selling_products(valid, n=5)
 
-# API enrichment summary
-enriched_success = sum(1 for t in enriched if t.get("API_Match"))
-enriched_total = len(enriched)
-success_rate = (enriched_success / enriched_total * 100) if enriched_total else 0
+        # customer stats
+        customer_stats = {}
+        for t in valid:
+            cid = t["CustomerID"]
+            amt = t["Quantity"] * t["UnitPrice"]
+            if cid not in customer_stats:
+                customer_stats[cid] = {"total_spent": 0, "order_count": 0}
+            customer_stats[cid]["total_spent"] += amt
+            customer_stats[cid]["order_count"] += 1
 
-dates = sorted(set(t["Date"] for t in valid))
-date_range = f"{dates[0]} to {dates[-1]}" if dates else "N/A"
+        top_customers = sorted(
+            customer_stats.items(),
+            key=lambda x: x[1]["total_spent"],
+            reverse=True
+        )[:5]
 
-with open("output/sales_report.txt", "w", encoding="utf-8") as r:
-    r.write("SALES ANALYTICS REPORT\n")
-    r.write("=" * 60 + "\n")
-    r.write(f"Generated: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}\n")
-    r.write(f"Records Processed: {len(valid)}\n\n")
+        dates = sorted(set(t["Date"] for t in valid))
+        date_range = f"{dates[0]} to {dates[-1]}" if dates else "N/A"
 
-    r.write("OVERALL SUMMARY\n")
-    r.write("-" * 60 + "\n")
-    r.write(f"Total Revenue: ₹{total_revenue:,.2f}\n")
-    r.write(f"Total Transactions: {len(valid)}\n")
-    r.write(f"Average Order Value: ₹{avg_order_value:,.2f}\n")
-    r.write(f"Date Range: {date_range}\n\n")
+        enriched_total = len(enriched)
+        success_rate = (enriched_success / enriched_total * 100) if enriched_total else 0
 
-    r.write("REGION-WISE PERFORMANCE\n")
-    r.write("-" * 60 + "\n")
-    r.write(f"{'Region':<10}{'Sales':>15}{'% Total':>10}{'Txns':>10}\n")
-    for region, stats in regions.items():
-        r.write(f"{region:<10}₹{stats['total_sales']:>14,.2f}{stats['percentage']:>9.2f}%{stats['transaction_count']:>10}\n")
-    r.write("\n")
+        with open("output/sales_report.txt", "w", encoding="utf-8") as r:
+            r.write("SALES ANALYTICS REPORT\n")
+            r.write("=" * 60 + "\n")
+            r.write(f"Generated: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}\n")
+            r.write(f"Records Processed: {len(valid)}\n\n")
 
-    r.write("TOP 5 PRODUCTS\n")
-    r.write("-" * 60 + "\n")
-    r.write(f"{'Rank':<6}{'Product':<25}{'Qty':>8}{'Revenue':>15}\n")
-    for i, (name, qty, rev) in enumerate(top_products, 1):
-        r.write(f"{i:<6}{name:<25}{qty:>8}₹{rev:>14,.2f}\n")
-    r.write("\n")
+            r.write("OVERALL SUMMARY\n")
+            r.write("-" * 60 + "\n")
+            r.write(f"Total Revenue: ₹{total_revenue:,.2f}\n")
+            r.write(f"Total Transactions: {len(valid)}\n")
+            r.write(f"Average Order Value: ₹{avg_order_value:,.2f}\n")
+            r.write(f"Date Range: {date_range}\n\n")
 
-    r.write("TOP 5 CUSTOMERS\n")
-    r.write("-" * 60 + "\n")
-    r.write(f"{'Rank':<6}{'CustomerID':<15}{'Spent':>15}{'Orders':>10}\n")
-    for i, (cid, info) in enumerate(top_customers, 1):
-        r.write(f"{i:<6}{cid:<15}₹{info['total_spent']:>14,.2f}{info['order_count']:>10}\n")
-    r.write("\n")
+            r.write("REGION-WISE PERFORMANCE\n")
+            r.write("-" * 60 + "\n")
+            r.write(f"{'Region':<10}{'Sales':>15}{'% Total':>10}{'Txns':>10}\n")
+            for region, stats in regions.items():
+                r.write(
+                    f"{region:<10}₹{stats['total_sales']:>14,.2f}"
+                    f"{stats['percentage']:>9.2f}%{stats['transaction_count']:>10}\n"
+                )
+            r.write("\n")
 
-    r.write("API ENRICHMENT SUMMARY\n")
-    r.write("-" * 60 + "\n")
-    r.write(f"Enriched Transactions: {enriched_success}/{enriched_total}\n")
-    r.write(f"Success Rate: {success_rate:.2f}%\n")
+            r.write("TOP 5 PRODUCTS\n")
+            r.write("-" * 60 + "\n")
+            r.write(f"{'Rank':<6}{'Product':<25}{'Qty':>8}{'Revenue':>15}\n")
+            for i, (name, qty, rev) in enumerate(top_products, 1):
+                r.write(f"{i:<6}{name:<25}{qty:>8}₹{rev:>14,.2f}\n")
+            r.write("\n")
 
-        print("Process Complete")
+            r.write("TOP 5 CUSTOMERS\n")
+            r.write("-" * 60 + "\n")
+            r.write(f"{'Rank':<6}{'CustomerID':<15}{'Spent':>15}{'Orders':>10}\n")
+            for i, (cid, info) in enumerate(top_customers, 1):
+                r.write(f"{i:<6}{cid:<15}₹{info['total_spent']:>14,.2f}{info['order_count']:>10}\n")
+            r.write("\n")
+
+            r.write("API ENRICHMENT SUMMARY\n")
+            r.write("-" * 60 + "\n")
+            r.write(f"Enriched Transactions: {enriched_success}/{enriched_total}\n")
+            r.write(f"Success Rate: {success_rate:.2f}%\n")
+
+        print("Report saved to: output/sales_report.txt\n")
+        print("[10/10] Process Complete!")
+
     except Exception as e:
-        print("Error:", e)
+        print(f"Error: {e}")
 
-if __name__ == '__main__':
+
+if __name__ == "__main__":
     main()

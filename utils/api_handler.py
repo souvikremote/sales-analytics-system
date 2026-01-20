@@ -16,10 +16,10 @@ def create_product_mapping(products):
         'rating': p.get('rating', 0)
     } for p in products}
 
-def enrich_sales_data(transactions, mapping):
+def enrich_sales_data(transactions, product_mapping):
     enriched = []
     for t in transactions:
-        pid = int(''.join(filter(str.isdigit, t['ProductID'])) or 0)
+        pid = int(''.join(filter(str.isdigit, t['ProductID']))) - 100
         api = mapping.get(pid)
         t = t.copy()
         if api:
