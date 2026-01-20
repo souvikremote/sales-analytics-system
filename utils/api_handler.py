@@ -20,7 +20,7 @@ def enrich_sales_data(transactions, product_mapping):
     enriched = []
     for t in transactions:
         pid = int(''.join(filter(str.isdigit, t['ProductID']))) - 100
-        api = mapping.get(pid)
+        api = product_mapping.get(pid)
         t = t.copy()
         if api:
             t.update({
